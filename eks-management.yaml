@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  EKS Management Server (eks-man-wa)
+  Pre-installed: eksctl, kubectl, helm, docker, aws-cli
+  Requires: project-network stack deployed first
+
+Parameters:
+  NetworkStackName:
+    Description: Name of the network CloudFormation stack
+    Type: String
+    Default: network-project
+
+  KeyName:
+    Description: EC2 Key Pair Name
+    Type: AWS::EC2::KeyPair::KeyName
+
+  InstanceType:
+    Description: EC2 Instance Type
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+
+  LatestAmiId:
+    Description: Amazon Linux 2023 Latest AMI (Do not change)
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+
+Resources:
+
+  # ── IAM Role (EKS + ECR + CloudFormation full access) ──
+  ManagementRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      Tags:
+        - Key: Name
+          Value: eks-man-wa-role
+
+  ManagementInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref ManagementRole
+
+  # ── Security Group (SSH only) ──
+  ManagementSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EKS Management Server - SSH access
+      VpcId:
+        Fn::ImportValue: !Sub "${NetworkStackName}-VpcId"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: SSH (Restrict to your IP in production)
+      Tags:
+        - Key: Name
+          Value: eks-man-wa-SG
+
+  # ── EC2 Instance ──
+  ManagementInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SubnetId:
+        Fn::ImportValue: !Sub "${NetworkStackName}-PublicSubnet1"
+      SecurityGroupIds:
+        - !Ref ManagementSG
+      IamInstanceProfile: !Ref ManagementInstanceProfile
+      Tags:
+        - Key: Name
+          Value: eks-man-wa
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -ex
+
+          # ── System update ──
+          dnf update -y
+
+          # ── eksctl ──
+          curl -sLO "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz"
+          tar xz -f eksctl_Linux_amd64.tar.gz
+          mv eksctl /usr/local/bin/
+          rm -f eksctl_Linux_amd64.tar.gz
+
+          # ── kubectl ──
+          KUBECTL_VERSION=$(curl -sL https://dl.k8s.io/release/stable.txt)
+          curl -LO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          mv kubectl /usr/local/bin/
+
+          # ── helm ──
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+          # ── docker ──
+          dnf install -y docker
+          systemctl start docker
+          systemctl enable docker
+          usermod -aG docker ec2-user
+
+          # ── git ──
+          dnf install -y git
+
+          # ── bash completion ──
+          kubectl completion bash > /etc/bash_completion.d/kubectl
+          eksctl completion bash > /etc/bash_completion.d/eksctl
+
+          # ── verify ──
+          echo "=== Tool Versions ===" > /home/ec2-user/setup-log.txt
+          eksctl version >> /home/ec2-user/setup-log.txt 2>&1
+          kubectl version --client >> /home/ec2-user/setup-log.txt 2>&1
+          helm version >> /home/ec2-user/setup-log.txt 2>&1
+          docker --version >> /home/ec2-user/setup-log.txt 2>&1
+          git --version >> /home/ec2-user/setup-log.txt 2>&1
+          echo "Setup complete!" >> /home/ec2-user/setup-log.txt
+          chown ec2-user:ec2-user /home/ec2-user/setup-log.txt
+
+Outputs:
+  InstanceId:
+    Description: Management EC2 Instance ID
+    Value: !Ref ManagementInstance
+
+  PublicIP:
+    Description: Public IP for SSH access
+    Value: !GetAtt ManagementInstance.PublicIp
+
+  SSHCommand:
+    Description: SSH connection command
+    Value: !Sub "ssh -i ${KeyName}.pem ec2-user@${ManagementInstance.PublicIp}"

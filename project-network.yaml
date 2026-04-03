@@ -1,0 +1,311 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Container Infrastructure Project - Network Architecture
+  VPC / Public-Private Subnet (Multi AZ) / IGW / NAT GW /
+  Route Table / Security Group / ALB / ASG (High Availability)
+  Region: eu-central-1 (Frankfurt)
+
+# ──────────────────────────────────────────────
+# Parameters
+# ──────────────────────────────────────────────
+# (ASG removed - EC2 is managed by eks-management stack)
+
+# ──────────────────────────────────────────────
+# Resources
+# ──────────────────────────────────────────────
+Resources:
+
+  # ────────────────────────────────────────────
+  # 1. VPC
+  # ────────────────────────────────────────────
+  ProjectVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: Project-VPC
+
+  # ────────────────────────────────────────────
+  # 2. Internet Gateway
+  # ────────────────────────────────────────────
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Project-IGW
+
+  IGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref ProjectVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # ────────────────────────────────────────────
+  # 3. Subnets (Public x2 / Private x2 / 멀티 AZ)
+  # ────────────────────────────────────────────
+
+  # Public Subnet - AZ-a
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ProjectVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]  # ap-northeast-2a
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Project-Public-SN-1
+        - Key: kubernetes.io/role/elb  # EKS ALB Ingress 사용 시 필요
+          Value: "1"
+
+  # Public Subnet - AZ-b
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ProjectVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]  # ap-northeast-2b
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Project-Public-SN-2
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+
+  # Private Subnet - AZ-a (워커노드 / DB 배치용)
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ProjectVPC
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]  # ap-northeast-2a
+      Tags:
+        - Key: Name
+          Value: Project-Private-SN-1
+        - Key: kubernetes.io/role/internal-elb  # EKS Internal LB 사용 시 필요
+          Value: "1"
+
+  # Private Subnet - AZ-b (워커노드 / DB 배치용)
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ProjectVPC
+      CidrBlock: 10.0.12.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]  # ap-northeast-2b
+      Tags:
+        - Key: Name
+          Value: Project-Private-SN-2
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+
+  # ────────────────────────────────────────────
+  # 4. NAT Gateway (Private Subnet → 인터넷 아웃바운드)
+  #    Private 서브넷의 EC2/워커노드가 외부 패키지 설치 등에 사용
+  # ────────────────────────────────────────────
+  NatEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: IGWAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: Project-NAT-EIP
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1   # NAT GW는 Public Subnet에 위치
+      Tags:
+        - Key: Name
+          Value: Project-NAT-GW
+
+  # ────────────────────────────────────────────
+  # 5. Route Tables
+  # ────────────────────────────────────────────
+
+  # Public Route Table: 0.0.0.0/0 → IGW
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ProjectVPC
+      Tags:
+        - Key: Name
+          Value: Project-Public-RT
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: IGWAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # Private Route Table: 0.0.0.0/0 → NAT GW (인터넷 직접 노출 없이 아웃바운드만 허용)
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ProjectVPC
+      Tags:
+        - Key: Name
+          Value: Project-Private-RT
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # ────────────────────────────────────────────
+  # 6. Security Groups
+  # ────────────────────────────────────────────
+
+  # ALB 보안그룹: 외부 → HTTP/HTTPS 허용
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB - Allow HTTP/HTTPS from internet
+      VpcId: !Ref ProjectVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS
+      Tags:
+        - Key: Name
+          Value: Project-ALB-SG
+
+
+  # ────────────────────────────────────────────
+  # 7. ALB (Application Load Balancer)
+  # ────────────────────────────────────────────
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: Project-ALB
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: Project-ALB
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: Project-TG
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref ProjectVPC
+      TargetType: instance
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 10
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      Matcher:
+        HttpCode: '200'
+      Tags:
+        - Key: Name
+          Value: Project-TG
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+
+
+# ──────────────────────────────────────────────
+# Outputs
+# ──────────────────────────────────────────────
+Outputs:
+
+  VpcId:
+    Description: VPC ID
+    Value: !Ref ProjectVPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcId"  # 다른 스택에서 참조 가능
+
+  PublicSubnet1Id:
+    Description: Public Subnet 1 ID (AZ-a)
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnet1"
+
+  PublicSubnet2Id:
+    Description: Public Subnet 2 ID (AZ-b)
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnet2"
+
+  PrivateSubnet1Id:
+    Description: Private Subnet 1 ID (AZ-a) - EKS Worker Node
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet1"
+
+  PrivateSubnet2Id:
+    Description: Private Subnet 2 ID (AZ-b) - EKS Worker Node
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet2"
+
+  ALBSecurityGroupId:
+    Description: ALB Security Group ID
+    Value: !Ref ALBSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-ALBSgId"
+
+  LoadBalancerDNS:
+    Description: ALB DNS URL
+    Value: !Sub "http://${ApplicationLoadBalancer.DNSName}"
+
+  LoadBalancerArn:
+    Description: ALB ARN (for EKS Ingress)
+    Value: !Ref ApplicationLoadBalancer
+    Export:
+      Name: !Sub "${AWS::StackName}-ALBArn"

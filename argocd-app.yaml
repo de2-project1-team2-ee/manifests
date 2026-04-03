@@ -1,0 +1,41 @@
+# ──────────────────────────────────────────────
+# argocd-app.yaml
+# ArgoCD Application 정의
+# GitHub manifests 레포를 감시하다가
+# 변경 감지 시 EKS에 자동 동기화(배포)
+#
+# 실행 명령:
+#   kubectl apply -f argocd-app.yaml
+#
+# 사전 준비:
+#   아래 YOUR_GITHUB_ORG, project-manifests 를 실제 값으로 교체
+# ──────────────────────────────────────────────
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: project-app
+  namespace: argocd
+  # 앱 삭제 시 EKS 리소스도 함께 삭제
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # 감시할 Git 레포 (manifests 레포)
+  source:
+    repoURL: https://github.com/YOUR_GITHUB_ORG/project-manifests.git
+    targetRevision: main       # 감시할 브랜치
+    path: k8s                  # k8s/ 디렉토리 안의 yaml을 배포
+
+  # 배포 대상 클러스터 및 네임스페이스
+  destination:
+    server: https://kubernetes.default.svc  # 현재 클러스터
+    namespace: project                      # 배포할 네임스페이스
+
+  syncPolicy:
+    # 자동 동기화 설정
+    automated:
+      prune: true      # Git에서 삭제된 리소스는 클러스터에서도 삭제
+      selfHeal: true   # 클러스터 상태가 Git과 달라지면 자동 복구
+    syncOptions:
+      - CreateNamespace=true   # 네임스페이스 없으면 자동 생성

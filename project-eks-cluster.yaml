@@ -1,0 +1,122 @@
+---
+# ──────────────────────────────────────────────
+# 컨테이너 인프라 구축 프로젝트 - EKS 클러스터
+# 사전 조건: project-network.yaml 스택이 먼저 배포되어 있어야 합니다.
+# 실행 명령: eksctl create cluster -f project-eks-cluster.yaml
+# Region: eu-central-1 (Frankfurt)
+# 보안: IAM Role 기반 인증 (액세스 키 / 키페어 불필요)
+#        워커노드 접근 필요 시 AWS SSM Session Manager 사용
+# ──────────────────────────────────────────────
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: project-eks
+  region: eu-central-1
+  version: "1.34"
+  tags:
+    Project: container-infra
+    ManagedBy: eksctl
+
+# ──────────────────────────────────────────────
+# VPC 설정
+# project-network.yaml에서 생성한 VPC/서브넷을 참조합니다.
+# 배포 전 아래 ID들을 실제 값으로 교체하세요.
+# 확인 방법: CloudFormation → project-network 스택 → 출력(Outputs) 탭
+# ──────────────────────────────────────────────
+vpc:
+  id: "vpc-0030bd1d0171777b2"
+  subnets:
+    public:
+      eu-central-1a:
+        id: "subnet-03ecb0cf9a7af830c"  # Public-SN-1
+      eu-central-1b:
+        id: "subnet-01f07c6f0a04538b0"  # Public-SN-2
+    private:
+      eu-central-1a:
+        id: "subnet-0dafeceeeb542ff29"  # Private-SN-1
+      eu-central-1b:
+        id: "subnet-01d053449aae1b6f7"  # Private-SN-2
+
+# ──────────────────────────────────────────────
+# IAM 설정
+# OIDC Provider 활성화 → ALB Ingress Controller 등 IRSA 사용 가능
+# eksctl이 EC2 IAM Role을 자동으로 사용 (액세스 키 불필요)
+# ──────────────────────────────────────────────
+iam:
+  withOIDC: true
+
+# ──────────────────────────────────────────────
+# 관리형 노드 그룹
+# 워커노드는 Private Subnet에 배치 → 외부 직접 노출 차단 (보안 강화)
+# ──────────────────────────────────────────────
+managedNodeGroups:
+  - name: project-node-group
+    instanceType: m7i-flex.large   # 무료 계정 사용 가능 (2vCPU / 8GB)
+    # instanceType: m5.large       # 유료 계정 사용 시 주석 해제
+
+    desiredCapacity: 2             # 고가용성을 위해 기본 2대
+    minSize: 2
+    maxSize: 4
+
+    volumeSize: 30                 # EBS 볼륨 (GiB)
+    volumeType: gp3                # gp3 권장 (gp2 대비 비용 효율적)
+
+    # 워커노드 Private Subnet 배치 (보안 강화)
+    privateNetworking: true
+
+    # 키페어 미사용 - IAM Role 기반 접근
+    # 워커노드 접근 필요 시: AWS 콘솔 → EC2 → 인스턴스 → 연결 → Session Manager
+    ssh:
+      allow: false
+
+    # IAM 정책
+    iam:
+      withAddonPolicies:
+        imageBuilder: true    # ECR 이미지 push/pull
+        albIngress: true      # ALB Ingress Controller
+        cloudWatch: true      # CloudWatch 로그 수집
+        autoScaler: true      # Cluster Autoscaler
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore  # SSM Session Manager 접근
+
+    # 노드 레이블 (파드 스케줄링 제어용)
+    labels:
+      role: worker
+      env: project
+
+    # 노드 태그
+    tags:
+      Name: project-eks-worker
+      Project: container-infra
+
+# ──────────────────────────────────────────────
+# CloudWatch 로깅
+# 컨트롤 플레인 로그 전체 활성화
+# ──────────────────────────────────────────────
+cloudWatch:
+  clusterLogging:
+    enableTypes:
+      - api            # API 서버 로그
+      - audit          # 감사 로그 (보안)
+      - authenticator  # 인증 로그
+      - controllerManager
+      - scheduler
+
+# ──────────────────────────────────────────────
+# Addons (EKS 관리형 애드온)
+# ──────────────────────────────────────────────
+addons:
+  - name: vpc-cni             # Pod 네트워킹
+    version: latest
+  - name: coredns             # 클러스터 DNS
+    version: latest
+  - name: kube-proxy          # 네트워크 프록시
+    version: latest
+  - name: aws-ebs-csi-driver  # PersistentVolume 지원
+    version: latest
+    wellKnownPolicies:
+      ebsCSIController: true
