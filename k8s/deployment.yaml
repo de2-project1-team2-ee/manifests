@@ -1,0 +1,76 @@
+# ──────────────────────────────────────────────
+# k8s/deployment.yaml
+# 앱: FastAPI 핫딜 쿠폰 서비스
+# GitHub Actions CI가 image 태그를 자동으로 업데이트합니다.
+# ──────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-app
+  namespace: project
+  labels:
+    app: project-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: project-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0        # 무중단 배포
+  template:
+    metadata:
+      labels:
+        app: project-app
+    spec:
+      containers:
+        - name: project-app
+          # GitHub Actions CI가 이 값을 자동으로 업데이트합니다.
+          # image: AWS_ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/project-app:latest
+          image: 486053612615.dkr.ecr.eu-central-1.amazonaws.com/project-app:latest
+          ports:
+            - containerPort: 8000
+          # DB 접속 정보 (postgres-svc ClusterIP로 내부 통신)
+          env:
+            - name: DB_HOST
+              value: "postgres-svc"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: POSTGRES_DB
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: COUPON_TOTAL
+              value: "300"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10

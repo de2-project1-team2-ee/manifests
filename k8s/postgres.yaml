@@ -1,0 +1,140 @@
+# ──────────────────────────────────────────────
+# k8s/postgres.yaml
+# PostgreSQL 샘플 DB + EBS PersistentVolume
+# ebs-csi-driver가 PVC 요청 시 EBS 볼륨 자동 생성
+# 사전 조건: project-eks-cluster.yaml의 aws-ebs-csi-driver 설치 완료
+# ──────────────────────────────────────────────
+
+# ── 1. StorageClass (gp3 EBS 볼륨 자동 생성) ──
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-gp3
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer   # 파드가 배치된 AZ에 EBS 생성
+reclaimPolicy: Retain                     # 파드/PVC 삭제해도 EBS 볼륨 유지 (데이터 보호)
+parameters:
+  type: gp3
+  fsType: ext4
+
+---
+# ── 2. PersistentVolumeClaim (저장공간 요청) ──
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: project
+spec:
+  accessModes:
+    - ReadWriteOnce           # 단일 파드에서만 읽기/쓰기
+  storageClassName: ebs-gp3
+  resources:
+    requests:
+      storage: 10Gi           # 샘플용 10GB
+
+---
+# ── 3. ConfigMap (PostgreSQL 초기 설정) ──
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: project
+data:
+  POSTGRES_DB: sampledb
+  POSTGRES_USER: appuser
+
+---
+# ── 4. Secret (PostgreSQL 비밀번호) ──
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: project
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: changeme123!   # 실제 운영 시 반드시 변경
+
+---
+# ── 5. Service (ClusterIP - 클러스터 내부 통신 전용) ──
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-svc
+  namespace: project
+spec:
+  type: ClusterIP               # 외부 노출 없음 - nginx 파드에서만 접근 가능
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+
+---
+# ── 6. Deployment ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: project
+  labels:
+    app: postgres
+spec:
+  replicas: 1                   # DB는 1개만 (데이터 정합성)
+  selector:
+    matchLabels:
+      app: postgres
+  strategy:
+    type: Recreate              # RollingUpdate 대신 Recreate
+                                # (EBS는 동시에 2개 파드가 붙을 수 없음)
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          # EBS 볼륨 마운트
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres        # EBS 루트 대신 하위 디렉토리 사용 (권장)
+
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "appuser", "-d", "sampledb"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "appuser", "-d", "sampledb"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc   # 위에서 정의한 PVC 연결
