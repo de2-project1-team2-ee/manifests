@@ -5,9 +5,9 @@
 | 항목 | 값 |
 |---|---|
 | 리전 | eu-central-1 (프랑크푸르트) |
-| GitHub 조직 | de2-project1-team2 |
-| app 레포 | de2-project1-team2/app |
-| manifests 레포 | de2-project1-team2/manifests |
+| GitHub 조직 | de2-project1-team2-ee |
+| app 레포 | de2-project1-team2-ee/app |
+| manifests 레포 | de2-project1-team2-ee/manifests |
 | ECR 레포 | project-app |
 | EKS 클러스터 | project-eks |
 | K8s 네임스페이스 | project |
@@ -107,7 +107,7 @@ EC2에서 실행:
 aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.eu-central-1.amazonaws.com
 
 # app 레포 클론
-git clone https://github.com/de2-project1-team2/app.git
+git clone https://github.com/de2-project1-team2-ee/app.git
 cd app
 
 # 빌드 + push
@@ -190,7 +190,7 @@ cat > trust-policy.json << EOF
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:de2-project1-team2/app:*"
+          "token.actions.githubusercontent.com:sub": "repo:de2-project1-team2-ee/app:*"
         }
       }
     }
@@ -216,7 +216,7 @@ app 레포 → Settings → Secrets and variables → Actions:
 | AWS_ACCOUNT_ID | <계정 ID> |
 | AWS_REGION | eu-central-1 |
 | ECR_REPOSITORY | project-app |
-| MANIFESTS_REPO | de2-project1-team2/manifests |
+| MANIFESTS_REPO | de2-project1-team2-ee/manifests |
 | MANIFESTS_TOKEN | <GitHub PAT> |
 
 ### 7-4. CI workflow 파일
@@ -257,7 +257,7 @@ kubectl get secret argocd-initial-admin-secret -n argocd \
 ```bash
 kubectl create secret generic argocd-repo-manifests \
   -n argocd \
-  --from-literal=url=https://github.com/de2-project1-team2/manifests.git \
+  --from-literal=url=https://github.com/de2-project1-team2-ee/manifests.git \
   --from-literal=username=<GitHub아이디> \
   --from-literal=password=<GitHub PAT> \
   -l argocd.argoproj.io/secret-type=repository
@@ -277,7 +277,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/de2-project1-team2/manifests.git
+    repoURL: https://github.com/de2-project1-team2-ee/manifests.git
     targetRevision: main
     path: k8s
   destination:

@@ -23,7 +23,7 @@ spec:
 
   # 감시할 Git 레포 (manifests 레포)
   source:
-    repoURL: https://github.com/YOUR_GITHUB_ORG/project-manifests.git
+    repoURL: https://github.com/de2-project1-team2-ee/manifests.git
     targetRevision: main       # 감시할 브랜치
     path: k8s                  # k8s/ 디렉토리 안의 yaml을 배포
 

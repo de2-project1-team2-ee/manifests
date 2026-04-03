@@ -41,19 +41,19 @@
 
 <!-- Public 존 -->
 <rect x="50" y="204" width="800" height="134" rx="12" fill="#B5D4F4" stroke="#185FA5" stroke-width="0.5"/>
-<text x="70" y="224" fill="#0C447C" class="th">Public Subnets  (ap-northeast-2a  /  ap-northeast-2b)</text>
+<text x="70" y="224" fill="#0C447C" class="th">Public Subnets  (eu-central-1a  /  eu-central-1b)</text>
 
 <!-- Public SN1 -->
 <rect x="68" y="232" width="340" height="90" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
 <text x="238" y="256" text-anchor="middle" fill="#0C447C" class="th">Public-SN-1</text>
-<text x="238" y="274" text-anchor="middle" fill="#185FA5" class="ts">10.0.1.0/24  ap-northeast-2a</text>
+<text x="238" y="274" text-anchor="middle" fill="#185FA5" class="ts">10.0.1.0/24  eu-central-1a</text>
 <text x="238" y="292" text-anchor="middle" fill="#185FA5" class="ts">NAT GW  /  ALB  /  eks-man-wa</text>
 <text x="238" y="310" text-anchor="middle" fill="#185FA5" class="ts">Route: 0.0.0.0/0 → IGW</text>
 
 <!-- Public SN2 -->
 <rect x="452" y="232" width="380" height="90" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
 <text x="642" y="256" text-anchor="middle" fill="#0C447C" class="th">Public-SN-2</text>
-<text x="642" y="274" text-anchor="middle" fill="#185FA5" class="ts">10.0.2.0/24  ap-northeast-2b</text>
+<text x="642" y="274" text-anchor="middle" fill="#185FA5" class="ts">10.0.2.0/24  eu-central-1b</text>
 <text x="642" y="292" text-anchor="middle" fill="#185FA5" class="ts">ALB (멀티 AZ)</text>
 <text x="642" y="310" text-anchor="middle" fill="#185FA5" class="ts">Route: 0.0.0.0/0 → IGW</text>
 
@@ -75,12 +75,12 @@
 
 <!-- Private 존 -->
 <rect x="50" y="428" width="800" height="170" rx="12" fill="#9FE1CB" stroke="#0F6E56" stroke-width="0.5"/>
-<text x="70" y="450" fill="#04342C" class="th">Private Subnets  (ap-northeast-2a  /  ap-northeast-2b)  —  워커노드 전용</text>
+<text x="70" y="450" fill="#04342C" class="th">Private Subnets  (eu-central-1a  /  eu-central-1b)  —  워커노드 전용</text>
 
 <!-- Private SN1 -->
 <rect x="68" y="458" width="340" height="124" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
 <text x="238" y="480" text-anchor="middle" fill="#085041" class="th">Private-SN-1</text>
-<text x="238" y="498" text-anchor="middle" fill="#0F6E56" class="ts">10.0.11.0/24  ap-northeast-2a</text>
+<text x="238" y="498" text-anchor="middle" fill="#0F6E56" class="ts">10.0.11.0/24  eu-central-1a</text>
 <text x="238" y="516" text-anchor="middle" fill="#0F6E56" class="ts">Route: 0.0.0.0/0 → NAT GW</text>
 <rect x="84" y="528" width="308" height="40" rx="6" fill="#1D9E75" stroke="#085041" stroke-width="0.5"/>
 <text x="238" y="544" text-anchor="middle" fill="white" class="th">Worker Node 1</text>
@@ -89,7 +89,7 @@
 <!-- Private SN2 -->
 <rect x="452" y="458" width="380" height="124" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
 <text x="642" y="480" text-anchor="middle" fill="#085041" class="th">Private-SN-2</text>
-<text x="642" y="498" text-anchor="middle" fill="#0F6E56" class="ts">10.0.12.0/24  ap-northeast-2b</text>
+<text x="642" y="498" text-anchor="middle" fill="#0F6E56" class="ts">10.0.12.0/24  eu-central-1b</text>
 <text x="642" y="516" text-anchor="middle" fill="#0F6E56" class="ts">Route: 0.0.0.0/0 → NAT GW</text>
 <rect x="468" y="528" width="348" height="40" rx="6" fill="#1D9E75" stroke="#085041" stroke-width="0.5"/>
 <text x="642" y="544" text-anchor="middle" fill="white" class="th">Worker Node 2</text>
@@ -128,5 +128,5 @@
 <line x1="660" y1="722" x2="700" y2="722" stroke="#888780" stroke-width="1" stroke-dasharray="5 3"/>
 <text x="708" y="726" fill="#444441" class="ts">관리 경로</text>
 
-<text x="50" y="746" fill="#888780" class="ts">project-network.yaml + project-eks-cluster.yaml  /  리전: ap-northeast-2 (서울)</text>
+<text x="50" y="746" fill="#888780" class="ts">project-network.yaml + project-eks-cluster.yaml  /  리전: eu-central-1 (Frankfurt)</text>
 </svg>

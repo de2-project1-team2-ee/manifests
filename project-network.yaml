@@ -54,7 +54,7 @@ Resources:
     Properties:
       VpcId: !Ref ProjectVPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]  # ap-northeast-2a
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]  # eu-central-1a
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -68,7 +68,7 @@ Resources:
     Properties:
       VpcId: !Ref ProjectVPC
       CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select [ 1, !GetAZs '' ]  # ap-northeast-2b
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]  # eu-central-1b
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -82,7 +82,7 @@ Resources:
     Properties:
       VpcId: !Ref ProjectVPC
       CidrBlock: 10.0.11.0/24
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]  # ap-northeast-2a
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]  # eu-central-1a
       Tags:
         - Key: Name
           Value: Project-Private-SN-1
@@ -95,7 +95,7 @@ Resources:
     Properties:
       VpcId: !Ref ProjectVPC
       CidrBlock: 10.0.12.0/24
-      AvailabilityZone: !Select [ 1, !GetAZs '' ]  # ap-northeast-2b
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]  # eu-central-1b
       Tags:
         - Key: Name
           Value: Project-Private-SN-2

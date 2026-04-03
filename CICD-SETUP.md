@@ -58,7 +58,7 @@ cat > trust-policy.json << EOF
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:de2-project1-team2/app:*"
+          "token.actions.githubusercontent.com:sub": "repo:de2-project1-team2-ee/app:*"
         }
       }
     }
@@ -81,10 +81,10 @@ app 레포 → Settings → Secrets and variables → Actions에서 등록:
 
 | Secret 이름 | 값 | 설명 |
 |---|---|---|
-| AWS_ACCOUNT_ID | 486053612615 | AWS 계정 ID |
+| AWS_ACCOUNT_ID | `aws sts get-caller-identity`로 확인 | AWS 계정 ID |
 | AWS_REGION | eu-central-1 | 리전 |
 | ECR_REPOSITORY | project-app | ECR 레포 이름 |
-| MANIFESTS_REPO | de2-project1-team2/manifests | manifests 레포 경로 |
+| MANIFESTS_REPO | <GitHub-Org>/manifests | manifests 레포 경로 |
 | MANIFESTS_TOKEN | ghp_xxxxx | GitHub PAT (repo 권한) |
 
 ### 6. GitHub PAT 발급 방법
@@ -127,7 +127,7 @@ Private 레포인 경우 ArgoCD가 접근할 수 있도록 인증 정보를 등�
 ```bash
 kubectl create secret generic argocd-repo-manifests \
   -n argocd \
-  --from-literal=url=https://github.com/de2-project1-team2/manifests.git \
+  --from-literal=url=https://github.com/de2-project1-team2-ee/manifests.git \
   --from-literal=username=<GitHub아이디> \
   --from-literal=password=<GitHub PAT> \
   -l argocd.argoproj.io/secret-type=repository
@@ -147,7 +147,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/de2-project1-team2/manifests.git
+    repoURL: https://github.com/de2-project1-team2-ee/manifests.git
     targetRevision: main
     path: k8s
   destination:

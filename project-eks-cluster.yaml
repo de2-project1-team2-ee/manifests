@@ -25,18 +25,18 @@ metadata:
 # 확인 방법: CloudFormation → project-network 스택 → 출력(Outputs) 탭
 # ──────────────────────────────────────────────
 vpc:
-  id: "vpc-0030bd1d0171777b2"
+  id: "__VPC_ID__"
   subnets:
     public:
       eu-central-1a:
-        id: "subnet-03ecb0cf9a7af830c"  # Public-SN-1
+        id: "__PUBLIC_SUBNET_1__"   # Public-SN-1
       eu-central-1b:
-        id: "subnet-01f07c6f0a04538b0"  # Public-SN-2
+        id: "__PUBLIC_SUBNET_2__"   # Public-SN-2
     private:
       eu-central-1a:
-        id: "subnet-0dafeceeeb542ff29"  # Private-SN-1
+        id: "__PRIVATE_SUBNET_1__"  # Private-SN-1
       eu-central-1b:
-        id: "subnet-01d053449aae1b6f7"  # Private-SN-2
+        id: "__PRIVATE_SUBNET_2__"  # Private-SN-2
 
 # ──────────────────────────────────────────────
 # IAM 설정
