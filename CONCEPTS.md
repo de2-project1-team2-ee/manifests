@@ -98,7 +98,66 @@ spec:
 
 ---
 
-## 3. GitOps
+## 3. Ingress
+
+**K8s 클러스터 외부에서 내부 서비스로 들어오는 HTTP 트래픽을 관리하는 규칙 정의.**
+
+Ingress 자체는 "규칙"일 뿐이고, 실제 로드밸런서를 만드는 건 **Ingress Controller**가 한다.
+
+### Ingress 없이 vs 있을 때
+
+| | Ingress 없이 | Ingress 있을 때 |
+|---|---|---|
+| **방식** | Service마다 `type: LoadBalancer` 생성 | Ingress 1개로 경로 기반 라우팅 |
+| **LB 수** | 서비스 수만큼 LB 생성 (비용 증가) | ALB 1개로 여러 서비스 처리 |
+| **라우팅** | 포트 기반만 가능 | 경로 기반 가능 (`/api`, `/web` 등) |
+
+### 동작 흐름
+
+```
+사용자 HTTP 요청
+    ↓
+  ALB (Ingress Controller가 자동 생성)
+    ↓ 경로 기반 라우팅
+  Service (ClusterIP)
+    ↓
+  Pod
+```
+
+### 이 프로젝트에서의 Ingress 설정
+
+```yaml
+# service.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+spec:
+  ingressClassName: alb                                # ALB Controller가 처리
+  rules:
+    - http:
+        paths:
+          - path: /                                    # 모든 경로를
+            backend:
+              service:
+                name: project-app-svc                  # 이 서비스로 전달
+                port:
+                  number: 80
+```
+
+### 구성 요소 관계
+
+| 구성 요소 | 역할 |
+|---|---|
+| **Ingress (YAML)** | "이 경로는 이 서비스로 보내라" 규칙 정의 |
+| **ALB Controller (Pod)** | Ingress를 읽고 실제 AWS ALB를 생성/업데이트 |
+| **ALB (AWS 리소스)** | 실제 트래픽을 받아 Pod로 전달 |
+
+Ingress 리소스만 만들면 아무 일도 안 일어난다.
+**ALB Controller가 설치되어 있어야** Ingress를 읽고 실제 ALB를 만든다.
+그래서 ALB Controller를 먼저 설치한 것.
+
+---
+
+## 4. GitOps
 
 **Git을 배포의 단일 진실 소스(Single Source of Truth)로 사용하는 운영 방식.**
 
