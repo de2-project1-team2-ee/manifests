@@ -157,7 +157,49 @@ Ingress 리소스만 만들면 아무 일도 안 일어난다.
 
 ---
 
-## 4. GitOps
+## 4. manifests 레포의 역할
+
+**"클러스터가 어떤 상태여야 하는지"를 정의하는 설계도.**
+
+### 왜 app 레포와 분리하나?
+
+```
+app 레포        → 소스코드 + CI     → "앱을 어떻게 만들지"
+manifests 레포  → K8s YAML + CD    → "앱을 어떻게 배포할지"
+```
+
+분리하는 이유:
+- **관심사 분리**: 코드 변경과 배포 설정 변경은 다른 문제
+- **ArgoCD가 감시**: manifests 레포만 watch하면 됨 (app 레포의 소스코드 변경은 무관)
+- **배포 이력 관리**: manifests 레포의 Git 히스토리 = 배포 이력
+
+### ArgoCD와의 관계
+
+```
+CI가 image 태그 변경 (push)
+        ↓
+manifests 레포에 새 커밋 발생
+        ↓
+ArgoCD: "Git 상태 ≠ 클러스터 상태" 감지
+        ↓
+ArgoCD: Git 상태에 맞춰 클러스터 업데이트 (Sync)
+```
+
+### 이미지 변경 외에도 모든 변경을 감지
+
+| manifests 변경 내용 | ArgoCD 동작 |
+|---|---|
+| deployment.yaml image 태그 변경 | 새 이미지로 Rolling Update |
+| replicas 수 변경 | Pod 수 조정 |
+| 환경변수 변경 | Pod 재시작 |
+| service.yaml 변경 | 네트워크 설정 반영 |
+| 파일 삭제 | 클러스터에서도 리소스 삭제 (prune) |
+
+**한마디로**: manifests 레포 = 클러스터의 "설계도", ArgoCD = 설계도대로 클러스터를 유지하는 "관리자"
+
+---
+
+## 5. GitOps
 
 **Git을 배포의 단일 진실 소스(Single Source of Truth)로 사용하는 운영 방식.**
 

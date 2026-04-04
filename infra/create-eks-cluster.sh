@@ -4,7 +4,7 @@
 # network-project 스택에서 VPC/Subnet ID를 자동 조회하여
 # project-eks-cluster.yaml에 치환 후 eksctl 실행
 #
-# 사용법: bash create-eks-cluster.sh
+# 사용법: cd infra && bash create-eks-cluster.sh
 # 사전 조건: network-project CloudFormation 스택 배포 완료
 # ──────────────────────────────────────────────
 set -euo pipefail

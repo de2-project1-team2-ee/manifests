@@ -3,7 +3,7 @@
 # deployment.yaml 초기 설정 스크립트
 # AWS Account ID / Region을 자동 조회하여 이미지 URL 세팅
 #
-# 사용법: bash init-deployment.sh
+# 사용법: 레포 루트에서 bash cicd/init-deployment.sh
 # ──────────────────────────────────────────────
 set -euo pipefail
 
