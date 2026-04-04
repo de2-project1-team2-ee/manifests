@@ -123,24 +123,20 @@ docker push $(aws sts get-caller-identity --query Account --output text).dkr.ecr
 EC2에서 실행:
 
 ```bash
-# 네임스페이스 생성
-kubectl create namespace project
+# deployment.yaml의 이미지 주소를 자동 세팅 (Account ID / Region 치환)
+bash init-deployment.sh
 
-# deployment.yaml의 이미지 주소 치환
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-sed -i "s|AWS_ACCOUNT_ID|$ACCOUNT_ID|" k8s/deployment.yaml
-sed -i "s|ap-northeast-2|eu-central-1|" k8s/deployment.yaml
+# 변경사항 push → ArgoCD가 자동 배포
+git add k8s/deployment.yaml
+git commit -m "chore: set ECR image URL"
+git push
 
-# DB 먼저 배포
-kubectl apply -f k8s/postgres.yaml
-
-# 앱 배포
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
+# ArgoCD Application 등록
+kubectl apply -f argocd-app.yaml
 
 # 확인
-kubectl get pods -n project
-# 3개 모두 Running 이면 성공
+kubectl get applications -n argocd
+# Synced + Healthy 면 성공
 ```
 
 ---
@@ -389,7 +385,7 @@ aws iam delete-role --role-name github-actions-role
 
 ## 미해결 이슈
 
-1. **GitHub Actions OIDC 인증 실패** — thumbprint 업데이트 필요. 다음 작업 시 최신 thumbprint로 재등록
+1. ~~**GitHub Actions OIDC 인증 실패**~~ — 해결 완료 (trust policy repo 이름 수정 + OIDC Provider 등록)
 2. **모니터링 미설치** — Prometheus + Grafana (다음 작업)
 3. **부하 테스트 미실행** — Locust로 500명 동시 접속 테스트 (다음 작업)
 
@@ -402,7 +398,7 @@ aws iam delete-role --role-name github-actions-role
 ```
 ├── .github/workflows/ci.yaml  # GitHub Actions CI
 ├── .gitignore
-├── .env.example
+├── .env                        # 로컬 환경변수
 ├── main.py                     # FastAPI 앱
 ├── database.py                 # DB 커넥션 풀
 ├── config.py                   # 환경변수 설정
@@ -412,29 +408,27 @@ aws iam delete-role --role-name github-actions-role
 ├── locustfile.py               # 부하 테스트
 ├── README.md
 ├── templates/index.html        # 쿠폰 페이지
-├── static/style.css
-└── k8s/                        # 참고용 (실제 배포는 manifests 레포)
-    ├── deployment.yaml
-    ├── service.yaml
-    └── postgres.yaml
+└── static/style.css
 ```
 
 ### manifests 레포
 
 ```
-├── CICD-SETUP.md               # CI/CD 설정 가이드
-└── k8s/
-    ├── deployment.yaml          # ← CI가 image 태그 자동 업데이트
-    ├── service.yaml
-    └── postgres.yaml
-```
-
-### 인프라 파일 (별도 보관)
-
-```
+├── k8s/
+│   ├── deployment.yaml          # ← CI가 image 태그 자동 업데이트
+│   ├── service.yaml
+│   └── postgres.yaml
 ├── project-network.yaml         # CloudFormation 네트워크
 ├── project-eks-cluster.yaml     # eksctl EKS 클러스터
 ├── eks-management.yaml          # CloudFormation 관리 서버
-├── network-architecture.svg     # 아키텍처 다이어그램
-└── cicd-pipeline.svg            # CI/CD 흐름도
+├── argocd-app.yaml              # ArgoCD Application 정의
+├── argocd-install.yaml          # ArgoCD 서버 외부 노출 (NLB)
+├── create-eks-cluster.sh        # EKS 생성 자동화 스크립트
+├── init-deployment.sh           # deployment.yaml 이미지 URL 자동 세팅
+├── architecture.svg             # 전체 아키텍처 다이어그램
+├── network-architecture.svg     # 네트워크 아키텍처 다이어그램
+├── cicd-pipeline.svg            # CI/CD 흐름도
+├── CICD-SETUP.md                # CI/CD 설정 가이드
+├── CONCEPTS.md                  # 핵심 개념 정리
+└── PROJECT-SETUP-GUIDE.md       # 전체 작업 순서 가이드
 ```

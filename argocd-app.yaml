@@ -8,7 +8,7 @@
 #   kubectl apply -f argocd-app.yaml
 #
 # 사전 준비:
-#   아래 YOUR_GITHUB_ORG, project-manifests 를 실제 값으로 교체
+#   repoURL이 실제 manifests 레포 주소와 일치하는지 확인
 # ──────────────────────────────────────────────
 apiVersion: argoproj.io/v1alpha1
 kind: Application
