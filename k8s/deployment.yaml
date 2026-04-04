@@ -29,7 +29,7 @@ spec:
         - name: project-app
           # GitHub Actions CI가 이 값을 자동으로 업데이트합니다.
           # image: AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/project-app:latest
-          image: __AWS_ACCOUNT_ID__.dkr.ecr.__AWS_REGION__/project-app:latest
+          image: 486053612615.dkr.ecr.eu-central-1/project-app:latest
           ports:
             - containerPort: 8000
           # DB 접속 정보 (postgres-svc ClusterIP로 내부 통신)
