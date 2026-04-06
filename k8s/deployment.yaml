@@ -28,8 +28,8 @@ spec:
       containers:
         - name: project-app
           # GitHub Actions CI가 이 값을 자동으로 업데이트합니다.
-          # image: 486053612615.dkr.ecr.eu-central-1.amazonaws.com/project-app:c80419049d6fa0922a63e5fa50c55a9be82fdd5d
-          image: 486053612615.dkr.ecr.eu-central-1.amazonaws.com/project-app:c80419049d6fa0922a63e5fa50c55a9be82fdd5d
+          # image: 486053612615.dkr.ecr.eu-central-1.amazonaws.com/project-app:259acb75fb519019120b375650cd2e3772d5389d
+          image: 486053612615.dkr.ecr.eu-central-1.amazonaws.com/project-app:259acb75fb519019120b375650cd2e3772d5389d
           ports:
             - containerPort: 8000
           # DB 접속 정보 (postgres-svc ClusterIP로 내부 통신)
