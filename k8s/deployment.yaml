@@ -59,7 +59,7 @@ spec:
                   name: rds-secret
                   key: DB_PASSWORD
             - name: COUPON_TOTAL
-              value: "300"
+              value: "10000"
           resources:
             requests:
               cpu: "100m"
