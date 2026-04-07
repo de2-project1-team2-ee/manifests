@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────
-# k8s/hpa.yaml
+# templates/hpa.yaml
 # Horizontal Pod Autoscaler
 # CPU 사용률 50% 초과 시 Pod 자동 증가 (최대 10개)
 # 사전 조건: Metrics Server 설치 완료 (04_setup_autoscaling_tools)
@@ -8,7 +8,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: project-app-hpa
-  namespace: project
+  namespace: dev
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
