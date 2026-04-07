@@ -28,7 +28,7 @@ spec:
       containers:
         - name: project-app
           # GitHub Actions CI가 이 값을 자동으로 업데이트합니다.
-          image: 486053612615.dkr.ecr.sa-east-1.amazonaws.com/project-app:63f23af341a2bd9f6dfb83ad7ff27e38682929e3
+          image: 486053612615.dkr.ecr.sa-east-1.amazonaws.com/project-app:8a015a30ba22fb816cdd0898aaf6d5ff7adee1b1
           ports:
             - containerPort: 8000
           # DB 접속 정보 (AWS RDS MySQL - Infra/06_rds_setup.sh)
