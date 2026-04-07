@@ -30,7 +30,7 @@ spec:
   # 배포 대상 클러스터 및 네임스페이스
   destination:
     server: https://kubernetes.default.svc  # 현재 클러스터
-    namespace: project                      # 배포할 네임스페이스
+    namespace: dev                            # 배포할 네임스페이스
 
   syncPolicy:
     # 자동 동기화 설정

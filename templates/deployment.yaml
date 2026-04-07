@@ -1,19 +1,13 @@
 # ──────────────────────────────────────────────
-# k8s/deployment.example.yaml
-# 플레이스홀더 원본 (참조용)
-# GitHub Actions CI가 이 파일을 기반으로 deployment.yaml의
-# image 값을 자동 업데이트합니다.
-#
-# 플레이스홀더 설명:
-#   __AWS_ACCOUNT_ID__  : AWS 계정 ID (예: 486053612615)
-#   __AWS_REGION__      : AWS 리전 (예: eu-central-1)
-#   __IMAGE_TAG__       : Docker 이미지 태그 (예: git commit SHA)
+# templates/deployment.yaml
+# 앱: FastAPI 핫딜 쿠폰 서비스
+# GitHub Actions CI가 image 태그를 자동으로 업데이트합니다.
 # ──────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: project-app
-  namespace: project
+  namespace: __NAMESPACE__
   labels:
     app: project-app
 spec:
@@ -37,7 +31,7 @@ spec:
           image: __AWS_ACCOUNT_ID__.dkr.ecr.__AWS_REGION__.amazonaws.com/project-app:__IMAGE_TAG__
           ports:
             - containerPort: 8000
-          # DB 접속 정보 (AWS RDS PostgreSQL - Infra/06_rds_setup.sh)
+          # DB 접속 정보 (AWS RDS MySQL - Infra/06_rds_setup.sh)
           env:
             - name: DB_HOST
               valueFrom:
@@ -65,7 +59,7 @@ spec:
                   name: rds-secret
                   key: DB_PASSWORD
             - name: COUPON_TOTAL
-              value: "300"
+              value: "__COUPON_TOTAL__"
           resources:
             requests:
               cpu: "100m"
